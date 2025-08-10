@@ -46,7 +46,7 @@ public static class DiscordTokenValidator
 
     private static bool TryBase64UrlDecode(string input, out byte[] output)
     {
-        output = null;
+        output = [];
         try
         {
             string padded = PadBase64Url(input);
