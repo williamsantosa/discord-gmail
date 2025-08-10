@@ -28,7 +28,7 @@ public class BotService : IHostedService, IAsyncDisposable
     {
 
         string? token = _config["Discord:Token"];
-        if (string.IsNullOrEmpty(token) || !DiscordTokenValidator.IsValidFormat(token))
+        if (string.IsNullOrEmpty(token))
         {
             throw new InvalidOperationException("Discord token not configured or token invalid.");
         }
@@ -39,7 +39,7 @@ public class BotService : IHostedService, IAsyncDisposable
                 "Attempting to start discord client... Service: {ServiceName}, Token: [REDACTED]",
                 nameof(BotService));
             await _client.LoginAsync(TokenType.Bot, token);
-            
+
             _logger.LogInformation(
                 "Login successful. Starting client asynchronously... Service: {ServiceName}, Token: [REDACTED]",
                 nameof(BotService));
