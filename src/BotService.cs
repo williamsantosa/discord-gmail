@@ -20,8 +20,6 @@ public class BotService : IHostedService, IAsyncDisposable
         _logger = logger;
         _client = client;
         _config = config;
-        _client.Log += LogAsync;
-        _client.MessageReceived += MessageReceivedAsync;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -65,19 +63,5 @@ public class BotService : IHostedService, IAsyncDisposable
     public ValueTask DisposeAsync()
     {
         return _client.DisposeAsync();
-    }
-
-    private Task LogAsync(LogMessage message)
-    {
-        Console.WriteLine(message.ToString());
-        return Task.CompletedTask;
-    }
-
-    private async Task MessageReceivedAsync(SocketMessage message)
-    {
-        if (message.Author.IsBot) return;
-
-        if (message.Content == "!ping")
-            await message.Channel.SendMessageAsync("Pong!");
     }
 }
