@@ -27,7 +27,7 @@ public class Program
             {
                 services.AddSingleton<DiscordSocketClient>();
                 services.AddHostedService<BotService>(); // Hosted service
-                services.AddHostedService<EmailPollingService>(); // Email polling service
+                services.AddHostedService<EmailPollingAgent>(); // Email polling service
             })
             .RunConsoleAsync(); // Keeps the app alive until Ctrl+C
     }

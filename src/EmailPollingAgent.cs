@@ -8,20 +8,20 @@ using Microsoft.Extensions.Logging;
 
 using DiscordGmail.Utils;
 
-public class EmailPollingService : IHostedService, IAsyncDisposable
+public class EmailPollingAgent : IHostedService, IAsyncDisposable
 {
-    private readonly ILogger<EmailPollingService> _logger;
+    private readonly ILogger<EmailPollingAgent> _logger;
     private readonly DiscordSocketClient _client;
     private readonly IConfiguration _config;
     private readonly Task _completedTask = Task.CompletedTask;
-    private SocketGuild _guild;
-    private SocketTextChannel _channel;
+    private SocketGuild _guild = null!;
+    private SocketTextChannel _channel = null!;
     private ulong _guildId = 0;
     private ulong _channelId = 0;
     private int _executionCount = 0;
     private Timer? _timer;
 
-    public EmailPollingService(ILogger<EmailPollingService> logger, DiscordSocketClient client, IConfiguration config)
+    public EmailPollingAgent(ILogger<EmailPollingAgent> logger, DiscordSocketClient client, IConfiguration config)
     {
         _logger = logger;
         _client = client;
@@ -38,21 +38,21 @@ public class EmailPollingService : IHostedService, IAsyncDisposable
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("{Service} is running.", nameof(EmailPollingService));
+        _logger.LogInformation("{Service} is running.", nameof(EmailPollingAgent));
 
         _client.Ready += async () =>
         {
-            _guild = _client.GetGuild(_guildId != null ? _guildId : 0);
+            _guild = _client.GetGuild(_guildId);
             if (_guild == null)
             {
-                _logger.LogInformation("{Service}. Guild not found. GuildId: {_guildId}", nameof(EmailPollingService), _guildId);
+                _logger.LogInformation("{Service}. Guild not found. GuildId: {_guildId}", nameof(EmailPollingAgent), _guildId);
                 return;
             }
 
-            _channel = _guild.GetTextChannel(_channelId != null ? _channelId : 0);
+            _channel = _guild.GetTextChannel(_channelId);
             if (_channel == null)
             {
-                _logger.LogInformation("{Service}. Channel not found. GuildId: {_channelId}", nameof(EmailPollingService), _channelId);
+                _logger.LogInformation("{Service}. Channel not found. GuildId: {_channelId}", nameof(EmailPollingAgent), _channelId);
                 return;
             }
 
@@ -64,7 +64,7 @@ public class EmailPollingService : IHostedService, IAsyncDisposable
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error in {Service} timer callback.", nameof(EmailPollingService));
+                    _logger.LogError(ex, "Error in {Service} timer callback.", nameof(EmailPollingAgent));
                 }
             }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
         };
@@ -76,8 +76,10 @@ public class EmailPollingService : IHostedService, IAsyncDisposable
 
         _logger.LogInformation(
             "{Service} is working, execution count: {Count:#,0}",
-            nameof(EmailPollingService),
+            nameof(EmailPollingAgent),
             count);
+
+        // here
 
         // Send a message asynchronously
         await _channel.SendMessageAsync(embed:
@@ -95,7 +97,7 @@ public class EmailPollingService : IHostedService, IAsyncDisposable
     public Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation(
-           "{Service} is stopping.", nameof(EmailPollingService));
+           "{Service} is stopping.", nameof(EmailPollingAgent));
 
         _timer?.Change(Timeout.Infinite, 0);
 
