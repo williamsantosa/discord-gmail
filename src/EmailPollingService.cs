@@ -14,6 +14,8 @@ public class EmailPollingService : IHostedService, IAsyncDisposable
     private readonly DiscordSocketClient _client;
     private readonly IConfiguration _config;
     private readonly Task _completedTask = Task.CompletedTask;
+    private SocketGuild _guild;
+    private SocketTextChannel _channel;
     private ulong _guildId = 0;
     private ulong _channelId = 0;
     private int _executionCount = 0;
@@ -24,31 +26,48 @@ public class EmailPollingService : IHostedService, IAsyncDisposable
         _logger = logger;
         _client = client;
         _config = config;
-    }
 
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
-        _logger.LogInformation("{Service} is running.", nameof(EmailPollingService));
-        
         if (_config["Discord:GuildId"] == null || _config["Discord:ChannelId"] == null)
         {
             throw new InvalidOperationException("Discord GuildId or ChannelId not configured.");
         }
 
-        _guildId = ulong.Parse(_config["Discord:GuildId"]!);;
+        _guildId = ulong.Parse(_config["Discord:GuildId"]!); ;
         _channelId = ulong.Parse(_config["Discord:ChannelId"]!); ;
+    }
 
-        _timer = new Timer(async _ =>
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("{Service} is running.", nameof(EmailPollingService));
+
+        _client.Ready += async () =>
         {
-            try
+            _guild = _client.GetGuild(_guildId != null ? _guildId : 0);
+            if (_guild == null)
             {
-                await DoWork(null);
+                _logger.LogInformation("{Service}. Guild not found. GuildId: {_guildId}", nameof(EmailPollingService), _guildId);
+                return;
             }
-            catch (Exception ex)
+
+            _channel = _guild.GetTextChannel(_channelId != null ? _channelId : 0);
+            if (_channel == null)
             {
-                _logger.LogError(ex, "Error in {Service} timer callback.", nameof(EmailPollingService));
+                _logger.LogInformation("{Service}. Channel not found. GuildId: {_channelId}", nameof(EmailPollingService), _channelId);
+                return;
             }
-        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+
+            _timer = new Timer(async _ =>
+            {
+                try
+                {
+                    await DoWork(null);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in {Service} timer callback.", nameof(EmailPollingService));
+                }
+            }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+        };
     }
 
     private async Task DoWork(object? state)
@@ -60,22 +79,17 @@ public class EmailPollingService : IHostedService, IAsyncDisposable
             nameof(EmailPollingService),
             count);
 
-        var guild = _client.GetGuild(_guildId);
-        if (guild == null)
-        {
-            Console.WriteLine("Guild not found.");
-            return;
-        }
-
-        var channel = guild.GetTextChannel(_channelId);
-        if (channel == null)
-        {
-            Console.WriteLine("Channel not found or is not a text channel.");
-            return;
-        }
-
         // Send a message asynchronously
-        await channel.SendMessageAsync("Hello from Discord.NET!");
+        await _channel.SendMessageAsync(embed:
+            new EmbedBuilder()
+                .WithTitle("Hello from EmbedBuilder!")
+                .WithDescription("This is a richly formatted embed message.")
+                .WithColor(Color.Purple)
+                .AddField("Field 1", "This is the value for field 1", inline: true)
+                .AddField("Field 2", "This is the value for field 2", inline: true)
+                .WithFooter(footer => footer.Text = "Footer text here")
+                .WithTimestamp(DateTimeOffset.UtcNow)
+                .Build());
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
